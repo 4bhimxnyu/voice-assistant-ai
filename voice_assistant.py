@@ -1,65 +1,110 @@
+import pyaudio
+import pyttsx3 #pip install pyttsx3
+import speech_recognition as sr #pip install SpeechRecognition
+import datetime
+import wikipedia #pip install wikipedia
+import webbrowser
 import os
-import speech_recognition as sr
-import pyttsx3
-import openai  # Correct import
+import smtplib
 
-# Set up OpenAI API key
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Initialize text-to-speech engine
-engine = pyttsx3.init()
+engine = pyttsx3.init('sapi5')
+voices = engine.getProperty('voices')
+# print(voices[1].id)
+engine.setProperty('voice', voices[0].id)
 
-# Function to speak text
-def speak(text):
-    engine.say(text)
+
+def speak(audio):
+    engine.say(audio)
     engine.runAndWait()
 
-# Function to listen and convert speech to text
-def listen():
-    recognizer = sr.Recognizer()
+
+def wishMe():
+    hour = int(datetime.datetime.now().hour)
+    if hour>=0 and hour<12:
+        speak("Good Morning!")
+
+    elif hour>=12 and hour<18:
+        speak("Good Afternoon!")
+
+    else:
+        speak("Good Evening!")
+
+    speak("I am Chat Boat. Please tell me how may I help you")
+
+def takeCommand():
+    #It takes microphone input from the user and returns string output
+
+    r = sr.Recognizer()
     with sr.Microphone() as source:
         print("Listening...")
-        audio = recognizer.listen(source)
-        try:
-            print("Recognizing...")
-            query = recognizer.recognize_google(audio)
-            print(f"You said: {query}")
-            return query
-        except sr.UnknownValueError:
-            print("Sorry, I didn't catch that.")
-            return ""
-        except sr.RequestError:
-            print("Speech service is down.")
-            return ""
+        r.pause_threshold = 1
+        audio = r.listen(source)
 
-# Function to get response from OpenAI
-def get_response(prompt):
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # or "gpt-4" if you have access
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        return response.choices[0].message['content'].strip()
-    except openai.error.OpenAIError as e:
-        print(f"Error with OpenAI API: {e}")
-        return "Sorry, I couldn't process your request at the moment."
+        print("Recognizing...")
+        query = r.recognize_google(audio, language='en-in')
+        print(f"User said: {query}\n")
 
-# Main loop
-def main():
-    speak("Hi, how can I help you today?")
+    except Exception as e:
+        # print(e)
+        print("Say that again please...")
+        return "None"
+    return query
+
+def sendEmail(to, content):
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.ehlo()
+    server.starttls()
+    server.login('youremail@gmail.com', 'your-password')
+    server.sendmail('youremail@gmail.com', to, content)
+    server.close()
+
+if _name_ == "__main__":
+    wishMe()
     while True:
-        query = listen()
-        if query:
-            if "exit" in query.lower():
-                speak("Goodbye!")
-                break
-            response = get_response(query)
-            print(f"Assistant: {response}")
-            speak(response)
+    # if 1:
+        query = takeCommand().lower()
 
-if __name__ == "__main__":
-    main()
-print(os.getenv("OPENAI_API_KEY"))
+        # Logic for executing tasks based on query
+        if 'wikipedia' in query:
+            speak('Searching Wikipedia...')
+            query = query.replace("wikipedia", "")
+            results = wikipedia.summary(query, sentences=2)
+            speak("According to Wikipedia")
+            print(results)
+            speak(results)
+
+        elif 'open youtube' in query:
+            webbrowser.open("youtube.com")
+
+        elif 'open google' in query:
+            webbrowser.open("google.com")
+
+        elif 'open stackoverflow' in query:
+            webbrowser.open("stackoverflow.com")
+
+        elif 'play music' in query:
+            music_dir = ''
+            songs = os.listdir(music_dir)
+            print(songs)
+            os.startfile(os.path.join(music_dir, songs[0]))
+
+        elif 'the time' in query:
+            strTime = datetime.datetime.now().strftime("%H:%M:%S")
+            speak(f"Sir, the time is {strTime}")
+
+        elif 'open code' in query:
+            codePath = ""
+            os.startfile(codePath)
+
+        elif 'email to me' in query:
+            try:
+                speak("What should I say?")
+                content = takeCommand()
+                to = "Xyz@gmail.com"
+                sendEmail(to, content)
+                speak("Email has been sent!")
+            except Exception as e:
+                print(e)
+                speak("")
